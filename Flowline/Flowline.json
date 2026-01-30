@@ -1,0 +1,16 @@
+{
+  "Author": "Andi",
+  "Name": "Flowline",
+  "Punchline": "Timeline overlay for encounter planning",
+  "Description": "A rhythm-game style timeline overlay that displays configured actions at specific timestamps during duty encounters. Supports recording, playback, and multiple display modes.",
+  "InternalName": "Flowline",
+  "ApplicableVersion": "any",
+  "DalamudApiLevel": 14,
+  "Tags": ["ui", "overlay", "combat"],
+  "LoadRequiredState": 2,
+  "LoadSync": false,
+  "CanUnloadAsync": false,
+  "LoadPriority": 0,
+  "IconUrl": "",
+  "Changelog": ""
+}

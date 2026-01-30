@@ -1,0 +1,34 @@
+{
+  "Id": "12345678-1234-1234-1234-123456789012",
+  "Name": "Example Timeline - Ultimate Raid",
+  "TerritoryId": 968,
+  "DurationSeconds": 660.0,
+  "Markers": [
+    {
+      "TimestampSeconds": 30.0,
+      "ActionId": 7533,
+      "PlayerName": "Tank Player",
+      "JobId": 32,
+      "IconId": 2901,
+      "CustomLabel": "Superbolide for tankbuster"
+    },
+    {
+      "TimestampSeconds": 120.0,
+      "ActionId": 7382,
+      "PlayerName": "Healer Player",
+      "JobId": 33,
+      "IconId": 2629,
+      "CustomLabel": "Party mitigation"
+    },
+    {
+      "TimestampSeconds": 210.0,
+      "ActionId": 3540,
+      "PlayerName": "DPS Player",
+      "JobId": 25,
+      "IconId": 2684,
+      "CustomLabel": "Burst phase"
+    }
+  ],
+  "IsEnabled": true,
+  "Description": "Example timeline demonstrating the JSON format for Flowline timelines."
+}

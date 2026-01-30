@@ -1,0 +1,15 @@
+[
+  {
+    "Author": "J2Slow",
+    "Name": "Flowline",
+    "InternalName": "Flowline",
+    "AssemblyVersion": "1.0.0.0",
+    "Description": "A rhythm-game style timeline overlay that displays configured actions at specific timestamps during duty encounters. Supports recording, playback, and multiple display modes.",
+    "Punchline": "Timeline overlay for encounter planning",
+    "ApplicableVersion": "any",
+    "DalamudApiLevel": 14,
+    "Tags": ["ui", "overlay", "combat"],
+    "DownloadLinkInstall": "https://github.com/J2Slow/Flowline/releases/latest/download/Flowline.zip",
+    "DownloadLinkUpdate": "https://github.com/J2Slow/Flowline/releases/latest/download/Flowline.zip"
+  }
+]
