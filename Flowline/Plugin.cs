@@ -94,6 +94,7 @@ public sealed class Plugin : IDalamudPlugin
         configWindow = new ConfigurationWindow(configManager, dutyDataService, editorWindow);
         timelineOverlay = new TimelineOverlay(playbackService, actionDataService, configManager, textureProvider, condition, configWindow, objectTable, clientState, recorderService);
         timelineOverlay.SetDutyDataService(dutyDataService);
+        timelineOverlay.SetCountdownService(countdownService);
         reviewWindow = new RecordingReviewWindow(recorderService, actionDataService, dutyDataService, configManager);
 
         // Add windows to window system

@@ -20,6 +20,7 @@ public interface ITimelineRenderer
     /// <param name="size">Overlay size</param>
     /// <param name="config">Display configuration</param>
     /// <param name="actionDataService">Service for getting action data</param>
+    /// <param name="countdownRemaining">Remaining countdown time (0 or negative = no countdown)</param>
     void Render(
         List<ActionMarker> markers,
         float currentTime,
@@ -27,5 +28,6 @@ public interface ITimelineRenderer
         Vector2 position,
         Vector2 size,
         FlowlineConfiguration config,
-        ActionDataService actionDataService);
+        ActionDataService actionDataService,
+        float countdownRemaining = 0f);
 }

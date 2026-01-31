@@ -26,9 +26,12 @@ public class TimelineEditorWindow : Window
     private Timeline? editingTimeline;
     private string timelineName = "";
     private float timelineDuration = 600f;
-    private int selectedTerritoryIndex = 0;
-    private ushort[] territoryIds = Array.Empty<ushort>();
-    private string[] territoryNames = Array.Empty<string>();
+
+    // Expansion-based duty selection
+    private int selectedExpansionIndex = 0;
+    private int selectedDutyIndex = 0;
+    private readonly string[] expansionNames = { "ARR", "HW", "StB", "ShB", "EW", "DT", "Ults" };
+    private Dictionary<string, List<DutyData>> dutiesByExpansion = new();
 
     // Timeline scrubber state
     private float scrubberPosition = 0f;
@@ -93,19 +96,131 @@ public class TimelineEditorWindow : Window
 
     private void InitializeDutyLists()
     {
-        // Filter to only high-end content: Extreme trials, Savage raids, and Ultimates
+        // Initialize expansion dictionaries
+        dutiesByExpansion = new Dictionary<string, List<DutyData>>
+        {
+            { "ARR", new List<DutyData>() },
+            { "HW", new List<DutyData>() },
+            { "StB", new List<DutyData>() },
+            { "ShB", new List<DutyData>() },
+            { "EW", new List<DutyData>() },
+            { "DT", new List<DutyData>() },
+            { "Ults", new List<DutyData>() }
+        };
+
+        // Filter to only high-end content
         var duties = dutyDataService.GetAllDuties()
-            .Where(d => d.TerritoryId >= 1187 &&
-                       (d.ContentType == 4 || d.ContentType == 5 || d.ContentType == 28) &&
-                       (d.DutyName.Contains("(Extreme)") ||
+            .Where(d => d.DutyName.Contains("(Extreme)") ||
                         d.DutyName.Contains("(Savage)") ||
                         d.DutyName.Contains("Ultimate") ||
-                        d.DutyName.Contains("(Unreal)")))
+                        d.DutyName.Contains("(Unreal)"))
             .OrderBy(d => d.DutyName)
             .ToArray();
 
-        territoryIds = duties.Select(d => d.TerritoryId).ToArray();
-        territoryNames = duties.Select(d => d.DutyName).ToArray();
+        foreach (var duty in duties)
+        {
+            var expansion = CategorizeByExpansion(duty);
+            if (dutiesByExpansion.ContainsKey(expansion))
+            {
+                dutiesByExpansion[expansion].Add(duty);
+            }
+        }
+    }
+
+    private string CategorizeByExpansion(DutyData duty)
+    {
+        var name = duty.DutyName;
+
+        // Ultimates go to their own category regardless of expansion
+        if (name.Contains("Ultimate"))
+        {
+            return "Ults";
+        }
+
+        // ARR (A Realm Reborn) - Binding Coil, early Extremes
+        if (name.Contains("Binding Coil") ||
+            name.Contains("The Minstrel's Ballad: Ultima's Bane") ||
+            name.Contains("Garuda (Extreme)") ||
+            name.Contains("Titan (Extreme)") ||
+            name.Contains("Ifrit (Extreme)") ||
+            name.Contains("Leviathan (Extreme)") ||
+            name.Contains("Good King Moggle Mog XII (Extreme)") ||
+            name.Contains("Ramuh (Extreme)") ||
+            name.Contains("Shiva (Extreme)") ||
+            name.Contains("Odin (Extreme)"))
+        {
+            return "ARR";
+        }
+
+        // Heavensward - Alexander, HW Extremes
+        if (name.Contains("Alexander") ||
+            name.Contains("Thok ast Thok (Extreme)") ||  // Ravana
+            name.Contains("The Limitless Blue (Extreme)") ||  // Bismarck
+            name.Contains("The Minstrel's Ballad: Thordan's Reign") ||
+            name.Contains("The Minstrel's Ballad: Nidhogg's Rage") ||
+            name.Contains("Containment Bay S1T7 (Extreme)") ||  // Sophia
+            name.Contains("Containment Bay P1T6 (Extreme)") ||  // Sephirot
+            name.Contains("Containment Bay Z1T9 (Extreme)"))  // Zurvan
+        {
+            return "HW";
+        }
+
+        // Stormblood - Omega, SB Extremes
+        if (name.Contains("Omega") ||
+            name.Contains("Sigmascape") ||
+            name.Contains("Alphascape") ||
+            name.Contains("The Pool of Tribute (Extreme)") ||  // Susano
+            name.Contains("Emanation (Extreme)") ||  // Lakshmi
+            name.Contains("The Minstrel's Ballad: Shinryu's Domain") ||
+            name.Contains("The Jade Stoa (Extreme)") ||  // Byakko
+            name.Contains("The Minstrel's Ballad: Tsukuyomi's Pain") ||
+            name.Contains("Hells' Kier (Extreme)") ||  // Suzaku
+            name.Contains("The Wreath of Snakes (Extreme)"))  // Seiryu
+        {
+            return "StB";
+        }
+
+        // Shadowbringers - Eden, ShB Extremes
+        if (name.Contains("Eden") ||
+            name.Contains("The Dancing Plague (Extreme)") ||  // Titania
+            name.Contains("The Crown of the Immaculate (Extreme)") ||  // Innocence
+            name.Contains("The Minstrel's Ballad: Hades's Elegy") ||
+            name.Contains("Cinder Drift (Extreme)") ||  // Ruby Weapon
+            name.Contains("Castrum Marinum (Extreme)") ||  // Emerald Weapon
+            name.Contains("The Cloud Deck (Extreme)") ||  // Diamond Weapon
+            name.Contains("The Seat of Sacrifice (Extreme)"))  // Warrior of Light
+        {
+            return "ShB";
+        }
+
+        // Endwalker - Pandaemonium, EW Extremes
+        if (name.Contains("Pandaemonium") ||
+            name.Contains("Anabaseios") ||
+            name.Contains("Abyssos") ||
+            name.Contains("Asphodelos") ||
+            name.Contains("The Minstrel's Ballad: Zodiark's Fall") ||
+            name.Contains("The Minstrel's Ballad: Hydaelyn's Call") ||
+            name.Contains("Storm's Crown (Extreme)") ||  // Barbariccia
+            name.Contains("Mount Ordeals (Extreme)") ||  // Rubicante
+            name.Contains("The Voidcast Dais (Extreme)") ||  // Golbez
+            name.Contains("The Abyssal Fracture (Extreme)"))  // Zeromus
+        {
+            return "EW";
+        }
+
+        // Dawntrail - Newest content
+        if (name.Contains("AAC Light-heavyweight") ||
+            name.Contains("Worqor Zormor (Extreme)") ||  // Valigarmanda
+            name.Contains("The Interphos (Extreme)") ||
+            name.Contains("Everkeep (Extreme)") ||
+            name.Contains("Jeuno: The First Walk") ||
+            duty.TerritoryId >= 1200)  // DT content has higher territory IDs
+        {
+            return "DT";
+        }
+
+        // Default to DT for unknown high-end content (likely newest)
+        return "DT";
     }
 
     public void CreateNewTimeline()
@@ -117,10 +232,13 @@ public class TimelineEditorWindow : Window
         };
         timelineName = editingTimeline.Name;
         timelineDuration = editingTimeline.DurationSeconds;
-        selectedTerritoryIndex = 0;
+        selectedExpansionIndex = 0;
+        selectedDutyIndex = 0;
         scrubberPosition = 0f;
         timelineScrollOffset = 0f;
         editingMarkerIndex = null;
+        undoStack.Clear();
+        redoStack.Clear();
         IsOpen = true;
     }
 
@@ -129,11 +247,33 @@ public class TimelineEditorWindow : Window
         editingTimeline = timeline;
         timelineName = timeline.Name;
         timelineDuration = timeline.DurationSeconds;
-        selectedTerritoryIndex = Array.IndexOf(territoryIds, timeline.TerritoryId);
-        if (selectedTerritoryIndex < 0) selectedTerritoryIndex = 0;
+
+        // Find the expansion and duty index for this territory
+        selectedExpansionIndex = 0;
+        selectedDutyIndex = 0;
+        for (int i = 0; i < expansionNames.Length; i++)
+        {
+            var expansion = expansionNames[i];
+            if (dutiesByExpansion.ContainsKey(expansion))
+            {
+                var duties = dutiesByExpansion[expansion];
+                for (int j = 0; j < duties.Count; j++)
+                {
+                    if (duties[j].TerritoryId == timeline.TerritoryId)
+                    {
+                        selectedExpansionIndex = i;
+                        selectedDutyIndex = j;
+                        break;
+                    }
+                }
+            }
+        }
+
         scrubberPosition = 0f;
         timelineScrollOffset = 0f;
         editingMarkerIndex = null;
+        undoStack.Clear();
+        redoStack.Clear();
     }
 
     public override void Draw()
@@ -189,15 +329,38 @@ public class TimelineEditorWindow : Window
         ImGui.Columns(2, "TimelineInfoColumns", false);
 
         // Left column
-        ImGui.SetColumnWidth(0, 350);
+        ImGui.SetColumnWidth(0, 450);
         ImGui.InputText("Name", ref timelineName, 100);
         editingTimeline!.Name = timelineName;
 
-        if (ImGui.Combo("Duty", ref selectedTerritoryIndex, territoryNames, territoryNames.Length))
+        // Expansion dropdown
+        ImGui.SetNextItemWidth(80);
+        if (ImGui.Combo("##Expansion", ref selectedExpansionIndex, expansionNames, expansionNames.Length))
         {
-            if (selectedTerritoryIndex >= 0 && selectedTerritoryIndex < territoryIds.Length)
+            // Reset duty selection when expansion changes
+            selectedDutyIndex = 0;
+        }
+
+        ImGui.SameLine();
+
+        // Duty dropdown for selected expansion
+        var currentExpansion = expansionNames[selectedExpansionIndex];
+        var dutiesInExpansion = dutiesByExpansion.ContainsKey(currentExpansion)
+            ? dutiesByExpansion[currentExpansion]
+            : new List<DutyData>();
+
+        var dutyNames = dutiesInExpansion.Select(d => d.DutyName).ToArray();
+        if (dutyNames.Length == 0)
+        {
+            dutyNames = new[] { "No duties found" };
+        }
+
+        ImGui.SetNextItemWidth(300);
+        if (ImGui.Combo("Duty", ref selectedDutyIndex, dutyNames, dutyNames.Length))
+        {
+            if (selectedDutyIndex >= 0 && selectedDutyIndex < dutiesInExpansion.Count)
             {
-                editingTimeline.TerritoryId = territoryIds[selectedTerritoryIndex];
+                editingTimeline.TerritoryId = dutiesInExpansion[selectedDutyIndex].TerritoryId;
             }
         }
 

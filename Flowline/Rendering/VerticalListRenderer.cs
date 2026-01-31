@@ -30,18 +30,30 @@ public class VerticalListRenderer : ITimelineRenderer
         Vector2 position,
         Vector2 size,
         FlowlineConfiguration config,
-        ActionDataService actionDataService)
+        ActionDataService actionDataService,
+        float countdownRemaining = 0f)
     {
         var drawList = ImGui.GetWindowDrawList();
 
         // Draw background
         drawList.AddRectFilled(position, position + size, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.7f)));
 
-        // Draw header
-        var headerText = "Upcoming Actions";
+        // Draw header or countdown
+        string headerText;
+        Vector4 headerColor;
+        if (countdownRemaining > 0)
+        {
+            headerText = $"Pull in {countdownRemaining:F0}";
+            headerColor = new Vector4(1f, 0.5f, 0.5f, 1f);
+        }
+        else
+        {
+            headerText = "Upcoming Actions";
+            headerColor = new Vector4(1, 1, 1, 1);
+        }
         var headerSize = ImGui.CalcTextSize(headerText);
         var headerPos = new Vector2(position.X + (size.X - headerSize.X) / 2, position.Y + 5);
-        drawList.AddText(headerPos, ImGui.GetColorU32(new Vector4(1, 1, 1, 1)), headerText);
+        drawList.AddText(headerPos, ImGui.GetColorU32(headerColor), headerText);
 
         // Group markers by similar timestamps (within 0.5s of each other)
         var markerGroups = GroupMarkersByTime(markers, currentTime, 0.5f);

@@ -29,6 +29,7 @@ public class TimelineOverlay : Window, IDisposable
     private readonly IObjectTable objectTable;
     private readonly IClientState clientState;
     private readonly ActionRecorderService? recorderService;
+    private CountdownService? countdownService;
     private DutyDataService? dutyDataService;
 
     private readonly HorizontalScrollRenderer horizontalRenderer;
@@ -53,6 +54,27 @@ public class TimelineOverlay : Window, IDisposable
     public void SetDutyDataService(DutyDataService dutyDataService)
     {
         this.dutyDataService = dutyDataService;
+    }
+
+    public void SetCountdownService(CountdownService countdownService)
+    {
+        this.countdownService = countdownService;
+
+        // Subscribe to countdown reaching zero - auto start timeline
+        this.countdownService.CountdownReachedZero += OnCountdownReachedZero;
+    }
+
+    private void OnCountdownReachedZero()
+    {
+        // Auto-start timeline when countdown reaches 0
+        if (selectedTimeline != null && !isPlaying)
+        {
+            playbackTime = 0f;
+            isPlaying = true;
+        }
+
+        // Notify recorder
+        recorderService?.OnCountdownReached();
     }
 
     public TimelineOverlay(
@@ -97,6 +119,9 @@ public class TimelineOverlay : Window, IDisposable
     {
         var config = configManager.Configuration;
 
+        // Update countdown service
+        countdownService?.Update();
+
         // Update playback time if timeline is selected
         if (selectedTimeline != null)
         {
@@ -128,9 +153,11 @@ public class TimelineOverlay : Window, IDisposable
             var timelinePos = ImGui.GetCursorScreenPos();
             var timelineSize = ImGui.GetContentRegionAvail();
 
-            if (selectedTimeline != null && isPlaying)
+            var countdownRemaining = countdownService?.CountdownRemaining ?? 0f;
+
+            if (selectedTimeline != null && (isPlaying || countdownRemaining > 0))
             {
-                // Always render timeline when playing (even with no markers)
+                // Always render timeline when playing or during countdown (even with no markers)
                 var renderer = GetRenderer(config.DisplayMode);
                 renderer.Render(
                     markers,
@@ -139,7 +166,8 @@ public class TimelineOverlay : Window, IDisposable
                     timelinePos,
                     timelineSize,
                     config,
-                    actionDataService
+                    actionDataService,
+                    countdownRemaining
                 );
             }
             else if (selectedTimeline != null)
@@ -465,6 +493,9 @@ public class TimelineOverlay : Window, IDisposable
 
     public void Dispose()
     {
-        // Cleanup if needed
+        if (countdownService != null)
+        {
+            countdownService.CountdownReachedZero -= OnCountdownReachedZero;
+        }
     }
 }

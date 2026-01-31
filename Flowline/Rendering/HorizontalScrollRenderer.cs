@@ -30,7 +30,8 @@ public class HorizontalScrollRenderer : ITimelineRenderer
         Vector2 position,
         Vector2 size,
         FlowlineConfiguration config,
-        ActionDataService actionDataService)
+        ActionDataService actionDataService,
+        float countdownRemaining = 0f)
     {
         var drawList = ImGui.GetWindowDrawList();
 
@@ -42,6 +43,12 @@ public class HorizontalScrollRenderer : ITimelineRenderer
 
         // Draw background
         drawList.AddRectFilled(barStart, barEnd, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.7f)));
+
+        // Draw countdown bar if countdown is active
+        if (countdownRemaining > 0)
+        {
+            DrawCountdownBar(drawList, countdownRemaining, barStart, barWidth, barHeight);
+        }
 
         // Draw timeline bar
         var timelineY = barStart.Y + barHeight / 2;
@@ -197,6 +204,104 @@ public class HorizontalScrollRenderer : ITimelineRenderer
         // Draw text left-aligned inside the box
         var textPos = new Vector2(boxStart.X + padding, boxStart.Y + padding);
         drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1f, 1f, 0.5f, 1f)), text);
+    }
+
+    private void DrawCountdownBar(
+        ImDrawListPtr drawList,
+        float countdownRemaining,
+        Vector2 barStart,
+        float barWidth,
+        float barHeight)
+    {
+        // Calculate countdown bar dimensions (attached to left side of timeline)
+        var countdownBarHeight = 30f;
+        var countdownBarY = barStart.Y + barHeight - countdownBarHeight - 5;
+
+        // Determine countdown bar width based on remaining time
+        // Max width represents the initial countdown duration (assume max 30 seconds)
+        var maxCountdownSeconds = Math.Max(countdownRemaining, 30f);
+        var countdownBarWidth = Math.Min(barWidth * 0.8f, maxCountdownSeconds * 10f);
+        var pixelsPerSecond = countdownBarWidth / maxCountdownSeconds;
+
+        // Draw countdown bar background
+        var countdownBarStart = new Vector2(barStart.X + 10, countdownBarY);
+        var countdownBarEnd = new Vector2(countdownBarStart.X + countdownBarWidth, countdownBarY + countdownBarHeight);
+        drawList.AddRectFilled(countdownBarStart, countdownBarEnd, ImGui.GetColorU32(new Vector4(0.2f, 0.1f, 0.1f, 0.9f)));
+        drawList.AddRect(countdownBarStart, countdownBarEnd, ImGui.GetColorU32(new Vector4(0.8f, 0.3f, 0.3f, 1f)), 0f, ImDrawFlags.None, 2f);
+
+        // Draw progress fill (fills from right to left as countdown decreases)
+        var fillWidth = (countdownRemaining / maxCountdownSeconds) * countdownBarWidth;
+        var fillEnd = new Vector2(countdownBarStart.X + fillWidth, countdownBarEnd.Y);
+        drawList.AddRectFilled(countdownBarStart, fillEnd, ImGui.GetColorU32(new Vector4(0.8f, 0.3f, 0.3f, 0.6f)));
+
+        // Draw markers: 5 second steps, except last 5 seconds have 1 second markers
+        var markerStartTime = (float)Math.Ceiling(countdownRemaining);
+        for (float time = markerStartTime; time >= 0; time -= 1f)
+        {
+            // Determine if this marker should be shown
+            bool showMarker;
+            if (time <= 5)
+            {
+                // Last 5 seconds: show every second
+                showMarker = true;
+            }
+            else
+            {
+                // Before last 5 seconds: show every 5 seconds
+                showMarker = time % 5 == 0;
+            }
+
+            if (!showMarker)
+                continue;
+
+            var markerX = countdownBarStart.X + (time / maxCountdownSeconds) * countdownBarWidth;
+            if (markerX < countdownBarStart.X || markerX > countdownBarEnd.X)
+                continue;
+
+            // Determine marker style
+            Vector4 color;
+            float thickness;
+            float markerHeight;
+
+            if (time <= 5)
+            {
+                // Last 5 seconds: yellow/orange, thicker
+                color = new Vector4(1f, 0.8f, 0.2f, 1f);
+                thickness = 2.5f;
+                markerHeight = countdownBarHeight;
+            }
+            else
+            {
+                // 5 second markers: white
+                color = new Vector4(1f, 1f, 1f, 0.8f);
+                thickness = 2f;
+                markerHeight = countdownBarHeight * 0.7f;
+            }
+
+            // Draw vertical marker
+            var markerTop = countdownBarY + (countdownBarHeight - markerHeight) / 2;
+            drawList.AddLine(
+                new Vector2(markerX, markerTop),
+                new Vector2(markerX, markerTop + markerHeight),
+                ImGui.GetColorU32(color),
+                thickness
+            );
+
+            // Draw time label
+            var timeLabel = $"{(int)time}";
+            var textSize = ImGui.CalcTextSize(timeLabel);
+            var textPos = new Vector2(markerX - textSize.X / 2, countdownBarY - textSize.Y - 2);
+            drawList.AddText(textPos, ImGui.GetColorU32(color), timeLabel);
+        }
+
+        // Draw "Pull in X" text
+        var pullText = $"Pull in {countdownRemaining:F0}";
+        var pullTextSize = ImGui.CalcTextSize(pullText);
+        var pullTextPos = new Vector2(
+            countdownBarStart.X + (countdownBarWidth - pullTextSize.X) / 2,
+            countdownBarY + (countdownBarHeight - pullTextSize.Y) / 2
+        );
+        drawList.AddText(pullTextPos, ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 1f)), pullText);
     }
 
     private void DrawTimeMarkers(
