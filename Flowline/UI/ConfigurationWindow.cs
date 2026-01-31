@@ -24,7 +24,7 @@ public class ConfigurationWindow : Window
     private INotificationManager? notificationManager;
 
     // Import popup state
-    private bool showImportPopup = false;
+    private bool openImportPopup = false;
     private string importJsonText = string.Empty;
     private string importErrorMessage = string.Empty;
 
@@ -188,12 +188,11 @@ public class ConfigurationWindow : Window
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Import Timeline"))
+        if (ImGui.Button("Import Timeline from Clipboard"))
         {
-            showImportPopup = true;
+            openImportPopup = true;
             importJsonText = string.Empty;
             importErrorMessage = string.Empty;
-            ImGui.OpenPopup("ImportTimelinePopup");
         }
 
         // Show export feedback message
@@ -321,16 +320,48 @@ public class ConfigurationWindow : Window
 
     private void DrawImportPopup()
     {
-        // Set popup size
-        ImGui.SetNextWindowSize(new Vector2(500, 400), ImGuiCond.FirstUseEver);
-
-        if (ImGui.BeginPopupModal("ImportTimelinePopup", ref showImportPopup, ImGuiWindowFlags.AlwaysAutoResize))
+        // Open popup if requested (must be done at window level, not inside tabs)
+        if (openImportPopup)
         {
-            ImGui.Text("Paste your timeline JSON below:");
+            ImGui.OpenPopup("Import Timeline##ImportPopup");
+            openImportPopup = false;
+        }
+
+        // Set popup size
+        ImGui.SetNextWindowSize(new Vector2(520, 420), ImGuiCond.FirstUseEver);
+
+        var popupOpen = true;
+        if (ImGui.BeginPopupModal("Import Timeline##ImportPopup", ref popupOpen, ImGuiWindowFlags.None))
+        {
+            ImGui.Text("Paste your timeline JSON below, or click 'Paste from Clipboard':");
+            ImGui.Spacing();
+
+            // Paste from clipboard button
+            if (ImGui.Button("Paste from Clipboard", new Vector2(150, 0)))
+            {
+                var clipboardText = ImGui.GetClipboardText();
+                if (!string.IsNullOrEmpty(clipboardText))
+                {
+                    importJsonText = clipboardText;
+                    importErrorMessage = string.Empty;
+                }
+                else
+                {
+                    importErrorMessage = "Clipboard is empty.";
+                }
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button("Clear", new Vector2(60, 0)))
+            {
+                importJsonText = string.Empty;
+                importErrorMessage = string.Empty;
+            }
+
             ImGui.Spacing();
 
             // Multiline text input for JSON
-            ImGui.InputTextMultiline("##ImportJson", ref importJsonText, 100000, new Vector2(480, 250));
+            ImGui.InputTextMultiline("##ImportJson", ref importJsonText, 100000, new Vector2(500, 250));
 
             ImGui.Spacing();
 
@@ -350,7 +381,6 @@ public class ConfigurationWindow : Window
             ImGui.SameLine();
             if (ImGui.Button("Cancel", new Vector2(100, 0)))
             {
-                showImportPopup = false;
                 ImGui.CloseCurrentPopup();
             }
 
@@ -395,7 +425,6 @@ public class ConfigurationWindow : Window
             }
 
             // Close popup
-            showImportPopup = false;
             importJsonText = string.Empty;
             importErrorMessage = string.Empty;
             ImGui.CloseCurrentPopup();
