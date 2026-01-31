@@ -17,7 +17,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - name: Checkout
@@ -26,39 +26,40 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: '10.0.x'
+        dotnet-quality: 'preview'
 
     - name: Download Dalamud
+      shell: pwsh
       run: |
-        mkdir -p ${{ env.DALAMUD_HOME }}
-        curl -L https://goatcorp.github.io/dalamud-distrib/stg/latest.zip -o /tmp/dalamud.zip
-        unzip /tmp/dalamud.zip -d ${{ env.DALAMUD_HOME }}
+        New-Item -ItemType Directory -Force -Path $env:DALAMUD_HOME
+        Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/stg/latest.zip -OutFile dalamud.zip
+        Expand-Archive -Path dalamud.zip -DestinationPath $env:DALAMUD_HOME -Force
 
     - name: Restore dependencies
       run: dotnet restore
-      env:
-        DALAMUD_HOME: ${{ env.DALAMUD_HOME }}
 
     - name: Build
       run: dotnet build --configuration Release --no-restore -p:DalamudLibPath=${{ env.DALAMUD_HOME }}/
-      env:
-        DALAMUD_HOME: ${{ env.DALAMUD_HOME }}
 
     - name: Get version
       id: version
+      shell: pwsh
       run: |
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-        else
-          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-        fi
+        if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+          echo "version=${{ github.event.inputs.version }}" >> $env:GITHUB_OUTPUT
+        } else {
+          $version = "${{ github.ref }}".Replace("refs/tags/v", "")
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+        }
 
     - name: Create release package
+      shell: pwsh
       run: |
-        mkdir -p release
-        cp Flowline/bin/Release/Flowline.dll release/
-        cp Flowline/Flowline.json release/
-        cd release && zip -r ../Flowline.zip .
+        New-Item -ItemType Directory -Force -Path release
+        Copy-Item Flowline/bin/Release/Flowline.dll release/
+        Copy-Item Flowline/Flowline.json release/
+        Compress-Archive -Path release/* -DestinationPath Flowline.zip
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
