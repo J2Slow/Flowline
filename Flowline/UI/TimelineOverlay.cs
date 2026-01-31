@@ -119,8 +119,8 @@ public class TimelineOverlay : Window, IDisposable
     {
         var config = configManager.Configuration;
 
-        // Update countdown service
-        countdownService?.Update();
+        // Note: countdownService.Update() is called in Plugin.OnFrameworkUpdate
+        // to ensure it runs every frame even when overlay is hidden
 
         // Update playback time if timeline is selected
         if (selectedTimeline != null)

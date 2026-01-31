@@ -108,12 +108,13 @@ public class TimelineEditorWindow : Window
             { "Ults", new List<DutyData>() }
         };
 
-        // Filter to only high-end content
+        // Filter to only high-end content (multi-language support)
+        // English: (Extreme), (Savage), Ultimate, (Unreal)
+        // German: (extrem), (episch), Fataler, (Traumprüfung)
+        // French: (Extrême), (Sadique), fatal
+        // Also use ContentType as fallback: 5=Raids, 4=Trials, 26=Ultimate, 28=Criterion
         var duties = dutyDataService.GetAllDuties()
-            .Where(d => d.DutyName.Contains("(Extreme)") ||
-                        d.DutyName.Contains("(Savage)") ||
-                        d.DutyName.Contains("Ultimate") ||
-                        d.DutyName.Contains("(Unreal)"))
+            .Where(d => IsHighEndContent(d))
             .OrderBy(d => d.DutyName)
             .ToArray();
 
@@ -127,97 +128,174 @@ public class TimelineEditorWindow : Window
         }
     }
 
-    private string CategorizeByExpansion(DutyData duty)
+    /// <summary>
+    /// Checks if a duty is high-end content (Extreme, Savage, Ultimate, Unreal).
+    /// Supports multiple languages: English, German, French, Japanese.
+    /// </summary>
+    private bool IsHighEndContent(DutyData duty)
     {
         var name = duty.DutyName;
 
+        // English patterns
+        if (name.Contains("(Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("(Savage)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Ultimate", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("(Unreal)", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // German patterns
+        if (name.Contains("(extrem)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("(episch)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Fataler", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("(Traumprüfung)", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // French patterns
+        if (name.Contains("(Extrême)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("(Sadique)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("fatal", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Japanese patterns (often includes English terms)
+        if (name.Contains("極", StringComparison.OrdinalIgnoreCase) || // Extreme
+            name.Contains("零式", StringComparison.OrdinalIgnoreCase) || // Savage
+            name.Contains("絶", StringComparison.OrdinalIgnoreCase)) // Ultimate
+        {
+            return true;
+        }
+
+        // ContentType-based fallback for Ultimate raids (ContentType 26)
+        if (duty.ContentType == 26)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private string CategorizeByExpansion(DutyData duty)
+    {
+        var name = duty.DutyName;
+        var territoryId = duty.TerritoryId;
+
         // Ultimates go to their own category regardless of expansion
-        if (name.Contains("Ultimate"))
+        if (name.Contains("Ultimate", StringComparison.OrdinalIgnoreCase))
         {
             return "Ults";
         }
 
+        // Use territory ID ranges as primary categorization (more reliable than name patterns)
+        // These ranges are approximate but cover most content
+        // ARR: ~128-400, HW: ~400-630, StB: ~630-820, ShB: ~820-1000, EW: ~1000-1200, DT: ~1200+
+
         // ARR (A Realm Reborn) - Binding Coil, early Extremes
-        if (name.Contains("Binding Coil") ||
-            name.Contains("The Minstrel's Ballad: Ultima's Bane") ||
-            name.Contains("Garuda (Extreme)") ||
-            name.Contains("Titan (Extreme)") ||
-            name.Contains("Ifrit (Extreme)") ||
-            name.Contains("Leviathan (Extreme)") ||
-            name.Contains("Good King Moggle Mog XII (Extreme)") ||
-            name.Contains("Ramuh (Extreme)") ||
-            name.Contains("Shiva (Extreme)") ||
-            name.Contains("Odin (Extreme)"))
+        if (territoryId < 400 ||
+            name.Contains("Binding Coil", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Second Coil", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Final Coil", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Ultima's Bane", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Garuda (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Titan (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Ifrit (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Leviathan (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Good King Moggle Mog XII (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Ramuh (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Shiva (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Odin (Extreme)", StringComparison.OrdinalIgnoreCase))
         {
-            return "ARR";
+            // Double-check it's not from a later expansion
+            if (territoryId < 400)
+                return "ARR";
         }
 
-        // Heavensward - Alexander, HW Extremes
-        if (name.Contains("Alexander") ||
-            name.Contains("Thok ast Thok (Extreme)") ||  // Ravana
-            name.Contains("The Limitless Blue (Extreme)") ||  // Bismarck
-            name.Contains("The Minstrel's Ballad: Thordan's Reign") ||
-            name.Contains("The Minstrel's Ballad: Nidhogg's Rage") ||
-            name.Contains("Containment Bay S1T7 (Extreme)") ||  // Sophia
-            name.Contains("Containment Bay P1T6 (Extreme)") ||  // Sephirot
-            name.Contains("Containment Bay Z1T9 (Extreme)"))  // Zurvan
+        // Heavensward - Alexander, HW Extremes (territory IDs ~400-630)
+        if ((territoryId >= 400 && territoryId < 630) ||
+            name.Contains("Alexander", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Thok ast Thok (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Limitless Blue (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Thordan's Reign", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Nidhogg's Rage", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Containment Bay S1T7 (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Containment Bay P1T6 (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Containment Bay Z1T9 (Extreme)", StringComparison.OrdinalIgnoreCase))
         {
-            return "HW";
+            if (territoryId >= 400 && territoryId < 630)
+                return "HW";
         }
 
-        // Stormblood - Omega, SB Extremes
-        if (name.Contains("Omega") ||
-            name.Contains("Sigmascape") ||
-            name.Contains("Alphascape") ||
-            name.Contains("The Pool of Tribute (Extreme)") ||  // Susano
-            name.Contains("Emanation (Extreme)") ||  // Lakshmi
-            name.Contains("The Minstrel's Ballad: Shinryu's Domain") ||
-            name.Contains("The Jade Stoa (Extreme)") ||  // Byakko
-            name.Contains("The Minstrel's Ballad: Tsukuyomi's Pain") ||
-            name.Contains("Hells' Kier (Extreme)") ||  // Suzaku
-            name.Contains("The Wreath of Snakes (Extreme)"))  // Seiryu
+        // Stormblood - Omega (Deltascape, Sigmascape, Alphascape), SB Extremes (territory IDs ~630-820)
+        if ((territoryId >= 630 && territoryId < 820) ||
+            name.Contains("Deltascape", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Sigmascape", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Alphascape", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Pool of Tribute (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Emanation (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Shinryu's Domain", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Jade Stoa (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Tsukuyomi's Pain", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Hells' Kier (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Wreath of Snakes (Extreme)", StringComparison.OrdinalIgnoreCase))
         {
-            return "StB";
+            if (territoryId >= 630 && territoryId < 820)
+                return "StB";
         }
 
-        // Shadowbringers - Eden, ShB Extremes
-        if (name.Contains("Eden") ||
-            name.Contains("The Dancing Plague (Extreme)") ||  // Titania
-            name.Contains("The Crown of the Immaculate (Extreme)") ||  // Innocence
-            name.Contains("The Minstrel's Ballad: Hades's Elegy") ||
-            name.Contains("Cinder Drift (Extreme)") ||  // Ruby Weapon
-            name.Contains("Castrum Marinum (Extreme)") ||  // Emerald Weapon
-            name.Contains("The Cloud Deck (Extreme)") ||  // Diamond Weapon
-            name.Contains("The Seat of Sacrifice (Extreme)"))  // Warrior of Light
+        // Shadowbringers - Eden, ShB Extremes (territory IDs ~820-1000)
+        if ((territoryId >= 820 && territoryId < 1000) ||
+            name.Contains("Eden's Gate", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Eden's Verse", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Eden's Promise", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Dancing Plague (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Crown of the Immaculate (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Hades's Elegy", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Cinder Drift (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Castrum Marinum (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Cloud Deck (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Seat of Sacrifice (Extreme)", StringComparison.OrdinalIgnoreCase))
         {
-            return "ShB";
+            if (territoryId >= 820 && territoryId < 1000)
+                return "ShB";
         }
 
-        // Endwalker - Pandaemonium, EW Extremes
-        if (name.Contains("Pandaemonium") ||
-            name.Contains("Anabaseios") ||
-            name.Contains("Abyssos") ||
-            name.Contains("Asphodelos") ||
-            name.Contains("The Minstrel's Ballad: Zodiark's Fall") ||
-            name.Contains("The Minstrel's Ballad: Hydaelyn's Call") ||
-            name.Contains("Storm's Crown (Extreme)") ||  // Barbariccia
-            name.Contains("Mount Ordeals (Extreme)") ||  // Rubicante
-            name.Contains("The Voidcast Dais (Extreme)") ||  // Golbez
-            name.Contains("The Abyssal Fracture (Extreme)"))  // Zeromus
+        // Endwalker - Pandaemonium, EW Extremes (territory IDs ~1000-1200)
+        if ((territoryId >= 1000 && territoryId < 1200) ||
+            name.Contains("Asphodelos", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Abyssos", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Anabaseios", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Zodiark's Fall", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Hydaelyn's Call", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Storm's Crown (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Mount Ordeals (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Voidcast Dais (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Abyssal Fracture (Extreme)", StringComparison.OrdinalIgnoreCase))
         {
-            return "EW";
+            if (territoryId >= 1000 && territoryId < 1200)
+                return "EW";
         }
 
-        // Dawntrail - Newest content
-        if (name.Contains("AAC Light-heavyweight") ||
-            name.Contains("Worqor Zormor (Extreme)") ||  // Valigarmanda
-            name.Contains("The Interphos (Extreme)") ||
-            name.Contains("Everkeep (Extreme)") ||
-            name.Contains("Jeuno: The First Walk") ||
-            duty.TerritoryId >= 1200)  // DT content has higher territory IDs
+        // Dawntrail - Newest content (territory IDs >= 1200)
+        if (territoryId >= 1200 ||
+            name.Contains("AAC Light-heavyweight", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Worqor Zormor (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Interphos (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Everkeep (Extreme)", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Jeuno", StringComparison.OrdinalIgnoreCase))
         {
             return "DT";
         }
+
+        // Fallback: Use territory ID ranges if no name pattern matched
+        if (territoryId < 400) return "ARR";
+        if (territoryId < 630) return "HW";
+        if (territoryId < 820) return "StB";
+        if (territoryId < 1000) return "ShB";
+        if (territoryId < 1200) return "EW";
 
         // Default to DT for unknown high-end content (likely newest)
         return "DT";

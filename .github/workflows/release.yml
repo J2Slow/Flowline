@@ -13,7 +13,6 @@ on:
 
 env:
   SOLUTION_NAME: Flowline
-  DALAMUD_HOME: /tmp/dalamud
 
 jobs:
   build:
@@ -32,15 +31,20 @@ jobs:
     - name: Download Dalamud
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Force -Path $env:DALAMUD_HOME
+        $dalamudPath = "$env:RUNNER_TEMP\dalamud"
+        New-Item -ItemType Directory -Force -Path $dalamudPath
         Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/stg/latest.zip -OutFile dalamud.zip
-        Expand-Archive -Path dalamud.zip -DestinationPath $env:DALAMUD_HOME -Force
+        Expand-Archive -Path dalamud.zip -DestinationPath $dalamudPath -Force
+        echo "DALAMUD_HOME=$dalamudPath" >> $env:GITHUB_ENV
 
     - name: Restore dependencies
       run: dotnet restore
 
     - name: Build
-      run: dotnet build --configuration Release --no-restore -p:DalamudLibPath=${{ env.DALAMUD_HOME }}/
+      shell: pwsh
+      run: |
+        $dalamudPath = "$env:DALAMUD_HOME\"
+        dotnet build --configuration Release --no-restore "-p:DalamudLibPath=$dalamudPath"
 
     - name: Get version
       id: version

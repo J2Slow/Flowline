@@ -48,6 +48,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ICondition condition;
     private readonly IPluginLog pluginLog;
     private readonly IObjectTable objectTable;
+    private readonly IGameGui gameGui;
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
@@ -60,7 +61,8 @@ public sealed class Plugin : IDalamudPlugin
         ICommandManager commandManager,
         ICondition condition,
         IPluginLog pluginLog,
-        IObjectTable objectTable)
+        IObjectTable objectTable,
+        IGameGui gameGui)
     {
         this.pluginInterface = pluginInterface;
         this.framework = framework;
@@ -73,6 +75,7 @@ public sealed class Plugin : IDalamudPlugin
         this.condition = condition;
         this.pluginLog = pluginLog;
         this.objectTable = objectTable;
+        this.gameGui = gameGui;
 
         // Initialize configuration
         configManager = new ConfigurationManager(pluginInterface, pluginLog);
@@ -84,7 +87,7 @@ public sealed class Plugin : IDalamudPlugin
         // Initialize core services
         playbackService = new TimelinePlaybackService();
         dutyDetectionService = new DutyDetectionService(clientState, configManager, playbackService);
-        countdownService = new CountdownService(chatGui, playbackService, configManager.Configuration);
+        countdownService = new CountdownService(chatGui, playbackService, configManager.Configuration, pluginLog, gameGui);
         recorderService = new ActionRecorderService(chatGui, clientState, objectTable, partyList, pluginInterface, pluginLog, configManager.Configuration);
 
         // Initialize UI windows
@@ -128,6 +131,9 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnFrameworkUpdate(IFramework framework)
     {
+        // Update countdown detection (reads from game memory)
+        countdownService.Update();
+
         // Update timeline playback
         playbackService.Update();
     }

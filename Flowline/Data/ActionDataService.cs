@@ -14,26 +14,22 @@ public class ActionDataService
     private readonly Dictionary<uint, ActionData> actionCache = new();
     private readonly Dictionary<byte, List<ActionData>> actionsByJob = new();
 
-    // Known action upgrade chains (base action -> final form)
-    // These are actions that upgrade to higher versions
-    private static readonly HashSet<uint> UpgradedAwayActions = new()
-    {
-        // AST Malefic chain (only keep highest)
-        3596, 3598, 7442, 16555, // Malefic I-IV (keep 25871 Malefic for Dawntrail)
-        // WHM Stone chain
-        119, 127, 3568, 7431, // Stone I-IV (keep 25859 Glare III)
-        // SCH Broil chain
-        3584, 7435, 16541, // Broil I-III (keep 25865 Broil IV)
-        // SGE Dosis chain
-        24283, 24306, // Dosis I-II (keep 24312 Dosis III)
-        // BLM Fire chain
-        141, 147, // Fire I-II (keep Fire III)
-        // SMN Ruin chain
-        163, 172, 7426, // Ruin I-III
-    };
-
-    // PVP action IDs start from these ranges
+    // PVP action range
     private const uint PvpActionStart = 29000;
+    private const uint PvpActionEnd = 30000;
+
+    // Valid action categories for player combat actions
+    // 2 = Spell, 3 = Weaponskill, 4 = Ability
+    private static readonly HashSet<byte> ValidActionCategories = new() { 2, 3, 4 };
+
+    // All combat job IDs (classes and jobs)
+    private static readonly byte[] AllJobIds = {
+        1, 2, 3, 4, 5, 6, 7,           // Base classes: GLA, PGL, MRD, LNC, ARC, CNJ, THM
+        19, 20, 21, 22, 23, 24, 25,    // Jobs: PLD, MNK, WAR, DRG, BRD, WHM, BLM
+        26, 27, 28, 29, 30,            // ACN, SMN, SCH, ROG, NIN
+        31, 32, 33, 34, 35, 36,        // MCH, DRK, AST, SAM, RDM, BLU
+        37, 38, 39, 40, 41, 42         // GNB, DNC, RPR, SGE, VPR, PCT
+    };
 
     public ActionDataService(IDataManager dataManager)
     {
@@ -44,46 +40,137 @@ public class ActionDataService
     private void InitializeCache()
     {
         var actionSheet = dataManager.GetExcelSheet<Action>();
-        if (actionSheet == null)
+        var classJobCategorySheet = dataManager.GetExcelSheet<ClassJobCategory>();
+        if (actionSheet == null || classJobCategorySheet == null)
             return;
 
         foreach (var action in actionSheet)
         {
-            if (action.RowId == 0 || string.IsNullOrEmpty(action.Name.ToString()))
+            // Skip invalid entries
+            if (action.RowId == 0)
                 continue;
 
-            // Skip PVP actions (they have IsPvP flag or are in PVP range)
-            if (action.RowId >= PvpActionStart && action.RowId < 30000)
+            var actionName = action.Name.ToString();
+            if (string.IsNullOrEmpty(actionName))
                 continue;
 
-            // Skip actions that have been upgraded to better versions
-            if (UpgradedAwayActions.Contains(action.RowId))
+            // Skip PVP actions
+            if (action.RowId >= PvpActionStart && action.RowId < PvpActionEnd)
                 continue;
 
-            // Skip actions with no icon (usually not player actions)
+            // Skip actions with IsPvP flag
+            if (action.IsPvP)
+                continue;
+
+            // Skip actions with no icon (usually system actions)
             if (action.Icon == 0)
                 continue;
 
-            var classJobId = (byte)action.ClassJob.RowId;
+            // Only include Spells (2), Weaponskills (3), and Abilities (4)
+            var actionCategory = (byte)action.ActionCategory.RowId;
+            if (!ValidActionCategories.Contains(actionCategory))
+                continue;
+
+            var classJobCategoryId = action.ClassJobCategory.RowId;
+
+            // Skip if no job category (can't determine who can use it)
+            if (classJobCategoryId == 0)
+                continue;
+
+            // Skip if no level requirement (usually system/NPC actions)
+            if (action.ClassJobLevel == 0)
+                continue;
 
             var actionData = new ActionData
             {
                 ActionId = action.RowId,
-                Name = action.Name.ToString(),
+                Name = actionName,
                 IconId = action.Icon,
-                ClassJob = classJobId,
-                // Store recast time as duration hint (in seconds)
+                ClassJob = (byte)action.ClassJob.RowId,
+                ClassJobCategoryId = classJobCategoryId,
+                ClassJobLevel = action.ClassJobLevel,
+                ActionCategory = actionCategory,
                 RecastTime = action.Recast100ms / 10f,
             };
 
             actionCache[action.RowId] = actionData;
 
-            // Index by job for faster filtering
-            if (!actionsByJob.TryGetValue(classJobId, out var jobActions))
+            // Use ClassJobCategory to determine which jobs can use this action
+            var categoryRow = classJobCategorySheet.GetRowOrDefault(classJobCategoryId);
+            if (categoryRow.HasValue)
             {
-                jobActions = new List<ActionData>();
-                actionsByJob[classJobId] = jobActions;
+                IndexActionByCategory(actionData, categoryRow.Value);
             }
+        }
+
+        // Sort each job's actions by level for better display
+        foreach (var jobActions in actionsByJob.Values)
+        {
+            jobActions.Sort((a, b) => a.ClassJobLevel.CompareTo(b.ClassJobLevel));
+        }
+    }
+
+    private void IndexActionByCategory(ActionData actionData, ClassJobCategory category)
+    {
+        // Check each job and add this action to their list if they can use it
+        foreach (var jobId in AllJobIds)
+        {
+            if (CanJobUseCategory(jobId, category))
+            {
+                AddActionToJob(actionData, jobId);
+            }
+        }
+    }
+
+    private bool CanJobUseCategory(byte jobId, ClassJobCategory category)
+    {
+        return jobId switch
+        {
+            1 => category.GLA,   // Gladiator
+            2 => category.PGL,   // Pugilist
+            3 => category.MRD,   // Marauder
+            4 => category.LNC,   // Lancer
+            5 => category.ARC,   // Archer
+            6 => category.CNJ,   // Conjurer
+            7 => category.THM,   // Thaumaturge
+            19 => category.PLD,  // Paladin
+            20 => category.MNK,  // Monk
+            21 => category.WAR,  // Warrior
+            22 => category.DRG,  // Dragoon
+            23 => category.BRD,  // Bard
+            24 => category.WHM,  // White Mage
+            25 => category.BLM,  // Black Mage
+            26 => category.ACN,  // Arcanist
+            27 => category.SMN,  // Summoner
+            28 => category.SCH,  // Scholar
+            29 => category.ROG,  // Rogue
+            30 => category.NIN,  // Ninja
+            31 => category.MCH,  // Machinist
+            32 => category.DRK,  // Dark Knight
+            33 => category.AST,  // Astrologian
+            34 => category.SAM,  // Samurai
+            35 => category.RDM,  // Red Mage
+            36 => category.BLU,  // Blue Mage
+            37 => category.GNB,  // Gunbreaker
+            38 => category.DNC,  // Dancer
+            39 => category.RPR,  // Reaper
+            40 => category.SGE,  // Sage
+            41 => category.VPR,  // Viper
+            42 => category.PCT,  // Pictomancer
+            _ => false
+        };
+    }
+
+    private void AddActionToJob(ActionData actionData, byte jobId)
+    {
+        if (!actionsByJob.TryGetValue(jobId, out var jobActions))
+        {
+            jobActions = new List<ActionData>();
+            actionsByJob[jobId] = jobActions;
+        }
+        // Avoid duplicates
+        if (!jobActions.Any(a => a.ActionId == actionData.ActionId))
+        {
             jobActions.Add(actionData);
         }
     }
@@ -124,23 +211,39 @@ public class ActionDataService
     {
         var lowerQuery = query.ToLowerInvariant();
 
-        // If job specified, use indexed lookup for better performance
-        if (jobId.HasValue && actionsByJob.TryGetValue(jobId.Value, out var jobActions))
+        // If job specified, get all actions available to that job (including role actions)
+        if (jobId.HasValue && jobId.Value > 0)
         {
-            foreach (var data in jobActions)
+            if (actionsByJob.TryGetValue(jobId.Value, out var jobActions))
             {
-                if (string.IsNullOrEmpty(lowerQuery) || data.Name.ToLowerInvariant().Contains(lowerQuery))
-                    yield return data;
+                var results = new List<ActionData>();
+                foreach (var data in jobActions)
+                {
+                    if (string.IsNullOrEmpty(lowerQuery) || data.Name.ToLowerInvariant().Contains(lowerQuery))
+                        results.Add(data);
+                }
+                return results; // Already sorted by level
             }
-            yield break;
+            return Enumerable.Empty<ActionData>();
         }
 
         // No job filter - search all
+        var allResults = new List<ActionData>();
         foreach (var data in actionCache.Values)
         {
             if (string.IsNullOrEmpty(lowerQuery) || data.Name.ToLowerInvariant().Contains(lowerQuery))
-                yield return data;
+                allResults.Add(data);
         }
+        allResults.Sort((a, b) => a.ClassJobLevel.CompareTo(b.ClassJobLevel));
+        return allResults;
+    }
+
+    /// <summary>
+    /// Gets all actions for a specific job, including role actions.
+    /// </summary>
+    public IEnumerable<ActionData> GetActionsForJob(byte jobId)
+    {
+        return SearchActions(string.Empty, jobId);
     }
 
     /// <summary>
@@ -206,5 +309,8 @@ public class ActionData
     public string Name { get; set; } = string.Empty;
     public uint IconId { get; set; }
     public byte ClassJob { get; set; }
+    public uint ClassJobCategoryId { get; set; }
+    public byte ClassJobLevel { get; set; }
+    public byte ActionCategory { get; set; } // 2=Spell, 3=Weaponskill, 4=Ability
     public float RecastTime { get; set; }
 }
