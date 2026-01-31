@@ -5,6 +5,7 @@ using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.ImGuiNotification;
 using Dalamud.Interface.Windowing;
+using Dalamud.Plugin.Services;
 using Flowline.Configuration;
 using Flowline.Data;
 using Dalamud.Bindings.ImGui;
@@ -474,7 +475,7 @@ public class ConfigurationWindow : Window
         ImGui.Text("Plugin Information");
         ImGui.Separator();
 
-        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1), "Flowline v1.1.0");
+        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1), "Flowline v1.2.0");
         ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1), "A timeline overlay for FFXIV encounters");
     }
 
