@@ -1,4 +1,5 @@
 using Dalamud.Game.Command;
+using Dalamud.Interface.ImGuiNotification;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -49,6 +50,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly IPluginLog pluginLog;
     private readonly IObjectTable objectTable;
     private readonly IGameGui gameGui;
+    private readonly INotificationManager notificationManager;
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
@@ -62,7 +64,8 @@ public sealed class Plugin : IDalamudPlugin
         ICondition condition,
         IPluginLog pluginLog,
         IObjectTable objectTable,
-        IGameGui gameGui)
+        IGameGui gameGui,
+        INotificationManager notificationManager)
     {
         this.pluginInterface = pluginInterface;
         this.framework = framework;
@@ -76,6 +79,7 @@ public sealed class Plugin : IDalamudPlugin
         this.pluginLog = pluginLog;
         this.objectTable = objectTable;
         this.gameGui = gameGui;
+        this.notificationManager = notificationManager;
 
         // Initialize configuration
         configManager = new ConfigurationManager(pluginInterface, pluginLog);
@@ -95,6 +99,7 @@ public sealed class Plugin : IDalamudPlugin
         editorWindow = new TimelineEditorWindow(configManager, dutyDataService, actionDataService);
         editorWindow.SetTextureProvider(textureProvider);
         configWindow = new ConfigurationWindow(configManager, dutyDataService, editorWindow);
+        configWindow.SetNotificationManager(notificationManager);
         timelineOverlay = new TimelineOverlay(playbackService, actionDataService, configManager, textureProvider, condition, configWindow, objectTable, clientState, recorderService);
         timelineOverlay.SetDutyDataService(dutyDataService);
         timelineOverlay.SetCountdownService(countdownService);

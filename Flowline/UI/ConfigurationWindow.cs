@@ -3,10 +3,12 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
+using Dalamud.Interface.ImGuiNotification;
 using Dalamud.Interface.Windowing;
 using Flowline.Configuration;
 using Flowline.Data;
 using Dalamud.Bindings.ImGui;
+using Newtonsoft.Json;
 
 namespace Flowline.UI;
 
@@ -18,6 +20,16 @@ public class ConfigurationWindow : Window
     private readonly ConfigurationManager configManager;
     private readonly DutyDataService dutyDataService;
     private readonly TimelineEditorWindow editorWindow;
+    private INotificationManager? notificationManager;
+
+    // Import popup state
+    private bool showImportPopup = false;
+    private string importJsonText = string.Empty;
+    private string importErrorMessage = string.Empty;
+
+    // Export feedback
+    private string exportFeedbackMessage = string.Empty;
+    private DateTime exportFeedbackTime = DateTime.MinValue;
 
     public ConfigurationWindow(
         ConfigurationManager configManager,
@@ -31,6 +43,11 @@ public class ConfigurationWindow : Window
 
         Size = new Vector2(600, 500);
         SizeCondition = ImGuiCond.FirstUseEver;
+    }
+
+    public void SetNotificationManager(INotificationManager notificationManager)
+    {
+        this.notificationManager = notificationManager;
     }
 
     public override void Draw()
@@ -65,6 +82,9 @@ public class ConfigurationWindow : Window
 
             ImGui.EndTabBar();
         }
+
+        // Draw import popup if open
+        DrawImportPopup();
     }
 
     private void DrawDisplaySettings(FlowlineConfiguration config)
@@ -169,15 +189,17 @@ public class ConfigurationWindow : Window
         ImGui.SameLine();
         if (ImGui.Button("Import Timeline"))
         {
-            // TODO: File picker for importing
-            ImGui.OpenPopup("ImportNotImplemented");
+            showImportPopup = true;
+            importJsonText = string.Empty;
+            importErrorMessage = string.Empty;
+            ImGui.OpenPopup("ImportTimelinePopup");
         }
 
-        if (ImGui.BeginPopup("ImportNotImplemented"))
+        // Show export feedback message
+        if (!string.IsNullOrEmpty(exportFeedbackMessage) && (DateTime.Now - exportFeedbackTime).TotalSeconds < 3)
         {
-            ImGui.Text("File picker not yet implemented.");
-            ImGui.Text("Place JSON files in the timelines directory.");
-            ImGui.EndPopup();
+            ImGui.SameLine();
+            ImGui.TextColored(new Vector4(0.2f, 0.8f, 0.2f, 1), exportFeedbackMessage);
         }
 
         ImGui.Spacing();
@@ -213,11 +235,11 @@ public class ConfigurationWindow : Window
             ImGui.SameLine();
             if (ImGuiComponents.IconButton(FontAwesomeIcon.FileExport))
             {
-                // TODO: File picker for exporting
+                ExportTimelineToClipboard(timeline);
             }
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("Export");
+                ImGui.SetTooltip("Export to Clipboard");
             }
 
             ImGui.SameLine();
@@ -253,6 +275,138 @@ public class ConfigurationWindow : Window
         }
 
         ImGui.EndChild();
+    }
+
+    private void ExportTimelineToClipboard(Timeline timeline)
+    {
+        try
+        {
+            var json = JsonConvert.SerializeObject(timeline, Formatting.Indented);
+            ImGui.SetClipboardText(json);
+
+            // Show feedback in window
+            exportFeedbackMessage = $"Exported '{timeline.Name}' to clipboard!";
+            exportFeedbackTime = DateTime.Now;
+
+            // Show Dalamud notification
+            if (notificationManager != null)
+            {
+                notificationManager.AddNotification(new Notification
+                {
+                    Title = "Flowline",
+                    Content = $"Timeline '{timeline.Name}' exported to clipboard!",
+                    Type = NotificationType.Success,
+                    Minimized = false,
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            exportFeedbackMessage = $"Export failed: {ex.Message}";
+            exportFeedbackTime = DateTime.Now;
+
+            if (notificationManager != null)
+            {
+                notificationManager.AddNotification(new Notification
+                {
+                    Title = "Flowline",
+                    Content = $"Failed to export timeline: {ex.Message}",
+                    Type = NotificationType.Error,
+                    Minimized = false,
+                });
+            }
+        }
+    }
+
+    private void DrawImportPopup()
+    {
+        // Set popup size
+        ImGui.SetNextWindowSize(new Vector2(500, 400), ImGuiCond.FirstUseEver);
+
+        if (ImGui.BeginPopupModal("ImportTimelinePopup", ref showImportPopup, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.Text("Paste your timeline JSON below:");
+            ImGui.Spacing();
+
+            // Multiline text input for JSON
+            ImGui.InputTextMultiline("##ImportJson", ref importJsonText, 100000, new Vector2(480, 250));
+
+            ImGui.Spacing();
+
+            // Show error message if any
+            if (!string.IsNullOrEmpty(importErrorMessage))
+            {
+                ImGui.TextColored(new Vector4(1, 0.3f, 0.3f, 1), importErrorMessage);
+                ImGui.Spacing();
+            }
+
+            // Buttons
+            if (ImGui.Button("Save as New Timeline", new Vector2(200, 0)))
+            {
+                ImportTimelineFromJson();
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button("Cancel", new Vector2(100, 0)))
+            {
+                showImportPopup = false;
+                ImGui.CloseCurrentPopup();
+            }
+
+            ImGui.EndPopup();
+        }
+    }
+
+    private void ImportTimelineFromJson()
+    {
+        if (string.IsNullOrWhiteSpace(importJsonText))
+        {
+            importErrorMessage = "Please paste a timeline JSON first.";
+            return;
+        }
+
+        try
+        {
+            var timeline = JsonConvert.DeserializeObject<Timeline>(importJsonText);
+
+            if (timeline == null)
+            {
+                importErrorMessage = "Failed to parse JSON. Please check the format.";
+                return;
+            }
+
+            // Generate new ID to avoid conflicts
+            timeline.Id = Guid.NewGuid();
+
+            // Save the timeline
+            configManager.SaveTimeline(timeline);
+
+            // Show success notification
+            if (notificationManager != null)
+            {
+                notificationManager.AddNotification(new Notification
+                {
+                    Title = "Flowline",
+                    Content = $"Timeline '{timeline.Name}' imported successfully!",
+                    Type = NotificationType.Success,
+                    Minimized = false,
+                });
+            }
+
+            // Close popup
+            showImportPopup = false;
+            importJsonText = string.Empty;
+            importErrorMessage = string.Empty;
+            ImGui.CloseCurrentPopup();
+        }
+        catch (JsonException ex)
+        {
+            importErrorMessage = $"Invalid JSON format: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            importErrorMessage = $"Import failed: {ex.Message}";
+        }
     }
 
     private void DrawRecordingSettings(FlowlineConfiguration config)
@@ -320,7 +474,7 @@ public class ConfigurationWindow : Window
         ImGui.Text("Plugin Information");
         ImGui.Separator();
 
-        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1), "Flowline v1.0.0");
+        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1), "Flowline v1.1.0");
         ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1), "A timeline overlay for FFXIV encounters");
     }
 
