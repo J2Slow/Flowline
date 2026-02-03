@@ -26,6 +26,8 @@ public sealed class Plugin : IDalamudPlugin
     private readonly DutyDetectionService dutyDetectionService;
     private readonly CountdownService countdownService;
     private readonly ActionRecorderService recorderService;
+    private readonly FFLogsService fflogsService;
+    private readonly FFLogsConverter fflogsConverter;
 
     // UI
     private readonly WindowSystem windowSystem;
@@ -33,6 +35,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ConfigurationWindow configWindow;
     private readonly TimelineEditorWindow editorWindow;
     private readonly RecordingReviewWindow reviewWindow;
+    private readonly FFLogsImportWindow fflogsImportWindow;
 
     // Commands
     private readonly FlowlineCommands commands;
@@ -94,6 +97,10 @@ public sealed class Plugin : IDalamudPlugin
         countdownService = new CountdownService(chatGui, playbackService, configManager.Configuration, pluginLog, gameGui);
         recorderService = new ActionRecorderService(chatGui, clientState, objectTable, partyList, pluginInterface, pluginLog, configManager.Configuration);
 
+        // Initialize FFLogs services
+        fflogsService = new FFLogsService(configManager, pluginLog);
+        fflogsConverter = new FFLogsConverter(actionDataService);
+
         // Initialize UI windows
         windowSystem = new WindowSystem("Flowline");
         editorWindow = new TimelineEditorWindow(configManager, dutyDataService, actionDataService);
@@ -104,12 +111,15 @@ public sealed class Plugin : IDalamudPlugin
         timelineOverlay.SetDutyDataService(dutyDataService);
         timelineOverlay.SetCountdownService(countdownService);
         reviewWindow = new RecordingReviewWindow(recorderService, actionDataService, dutyDataService, configManager);
+        fflogsImportWindow = new FFLogsImportWindow(fflogsService, fflogsConverter, configManager);
+        configWindow.SetFFLogsImportWindow(fflogsImportWindow);
 
         // Add windows to window system
         windowSystem.AddWindow(configWindow);
         windowSystem.AddWindow(editorWindow);
         windowSystem.AddWindow(reviewWindow);
         windowSystem.AddWindow(timelineOverlay);
+        windowSystem.AddWindow(fflogsImportWindow);
 
         // Initialize commands
         commands = new FlowlineCommands(
@@ -191,11 +201,13 @@ public sealed class Plugin : IDalamudPlugin
         countdownService.Dispose();
         recorderService.Dispose();
         playbackService.Dispose();
+        fflogsService.Dispose();
         configManager.Dispose();
         timelineOverlay.Dispose();
         configWindow.Dispose();
         editorWindow.Dispose();
         reviewWindow.Dispose();
+        fflogsImportWindow.Dispose();
 
         windowSystem.RemoveAllWindows();
     }

@@ -63,6 +63,10 @@ public class FlowlineConfiguration : IPluginConfiguration
     public bool DebugMode { get; set; } = false;
     public bool ShowDebugOverlay { get; set; } = false;
 
+    // FFLogs API settings
+    public string FFLogsClientId { get; set; } = string.Empty;
+    public string FFLogsClientSecret { get; set; } = string.Empty;
+
     /// <summary>
     /// Creates a new default configuration.
     /// </summary>

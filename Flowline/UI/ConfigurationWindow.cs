@@ -22,6 +22,7 @@ public class ConfigurationWindow : Window
     private readonly DutyDataService dutyDataService;
     private readonly TimelineEditorWindow editorWindow;
     private INotificationManager? notificationManager;
+    private FFLogsImportWindow? fflogsImportWindow;
 
     // Import popup state
     private bool openImportPopup = false;
@@ -49,6 +50,11 @@ public class ConfigurationWindow : Window
     public void SetNotificationManager(INotificationManager notificationManager)
     {
         this.notificationManager = notificationManager;
+    }
+
+    public void SetFFLogsImportWindow(FFLogsImportWindow fflogsImportWindow)
+    {
+        this.fflogsImportWindow = fflogsImportWindow;
     }
 
     public override void Draw()
@@ -188,11 +194,20 @@ public class ConfigurationWindow : Window
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Import Timeline from Clipboard"))
+        if (ImGui.Button("Import from Clipboard"))
         {
             openImportPopup = true;
             importJsonText = string.Empty;
             importErrorMessage = string.Empty;
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Import from FFLogs"))
+        {
+            if (fflogsImportWindow != null)
+            {
+                fflogsImportWindow.IsOpen = true;
+            }
         }
 
         // Show export feedback message
