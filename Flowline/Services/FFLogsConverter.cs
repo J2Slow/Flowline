@@ -33,7 +33,7 @@ public class FFLogsConverter
         var timeline = new Timeline
         {
             Name = $"{jobDisplayName} - {fight.Name}",
-            TerritoryId = 0, // User can set this later in editor
+            TerritoryId = (ushort)fight.GameZoneId, // Set from FFLogs gameZone
             DurationSeconds = fight.DurationSeconds,
             Description = $"Imported from FFLogs report {report.Code}, fight #{fight.Id}",
             IsEnabled = true

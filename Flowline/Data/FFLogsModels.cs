@@ -48,6 +48,16 @@ public class FFLogsFight
     public int? BossPercentage { get; set; }
 
     /// <summary>
+    /// IDs of players participating in this specific fight.
+    /// </summary>
+    public List<int> FriendlyPlayers { get; set; } = new();
+
+    /// <summary>
+    /// The in-game zone ID (FFXIV territory ID).
+    /// </summary>
+    public int GameZoneId { get; set; }
+
+    /// <summary>
     /// Duration in seconds.
     /// </summary>
     public float DurationSeconds => (EndTime - StartTime) / 1000f;
