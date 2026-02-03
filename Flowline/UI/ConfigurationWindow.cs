@@ -519,7 +519,7 @@ public class ConfigurationWindow : Window
         ImGui.Text("Plugin Information");
         ImGui.Separator();
 
-        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1), "Flowline v1.4.0");
+        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1), "Flowline v1.4.1");
         ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1), "A timeline overlay for FFXIV encounters");
     }
 

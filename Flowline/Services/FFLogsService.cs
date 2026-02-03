@@ -14,6 +14,68 @@ using Newtonsoft.Json.Linq;
 namespace Flowline.Services;
 
 /// <summary>
+/// Extension methods for safe JToken value extraction.
+/// Handles null values, missing keys, and type mismatches gracefully.
+/// </summary>
+internal static class JTokenExtensions
+{
+    public static int SafeInt(this JToken? token, int defaultValue = 0)
+    {
+        if (token == null || token.Type == JTokenType.Null)
+            return defaultValue;
+        try { return token.Value<int>(); }
+        catch { return defaultValue; }
+    }
+
+    public static long SafeLong(this JToken? token, long defaultValue = 0)
+    {
+        if (token == null || token.Type == JTokenType.Null)
+            return defaultValue;
+        try { return token.Value<long>(); }
+        catch { return defaultValue; }
+    }
+
+    public static uint SafeUInt(this JToken? token, uint defaultValue = 0)
+    {
+        if (token == null || token.Type == JTokenType.Null)
+            return defaultValue;
+        try { return token.Value<uint>(); }
+        catch { return defaultValue; }
+    }
+
+    public static bool SafeBool(this JToken? token, bool defaultValue = false)
+    {
+        if (token == null || token.Type == JTokenType.Null)
+            return defaultValue;
+        try { return token.Value<bool>(); }
+        catch { return defaultValue; }
+    }
+
+    public static int? SafeNullableInt(this JToken? token)
+    {
+        if (token == null || token.Type == JTokenType.Null)
+            return null;
+        try { return token.Value<int>(); }
+        catch { return null; }
+    }
+
+    public static long? SafeNullableLong(this JToken? token)
+    {
+        if (token == null || token.Type == JTokenType.Null)
+            return null;
+        try { return token.Value<long>(); }
+        catch { return null; }
+    }
+
+    public static string SafeString(this JToken? token, string defaultValue = "")
+    {
+        if (token == null || token.Type == JTokenType.Null)
+            return defaultValue;
+        return token.ToString() ?? defaultValue;
+    }
+}
+
+/// <summary>
 /// Service for interacting with the FFLogs API.
 /// </summary>
 public class FFLogsService : IDisposable
@@ -234,9 +296,9 @@ public class FFLogsService : IDisposable
             var report = new FFLogsReport
             {
                 Code = reportCode,
-                Title = reportData["title"]?.ToString() ?? "Unknown",
-                StartTime = reportData["startTime"]?.Value<long>() ?? 0,
-                EndTime = reportData["endTime"]?.Value<long>() ?? 0
+                Title = reportData["title"].SafeString("Unknown"),
+                StartTime = reportData["startTime"].SafeLong(),
+                EndTime = reportData["endTime"].SafeLong()
             };
 
             // Parse actors
@@ -247,11 +309,11 @@ public class FFLogsService : IDisposable
                 {
                     report.Actors.Add(new FFLogsActor
                     {
-                        Id = actor["id"]?.Value<int>() ?? 0,
-                        Name = actor["name"]?.ToString() ?? "",
-                        Type = actor["type"]?.ToString() ?? "",
-                        SubType = actor["subType"]?.ToString() ?? "",
-                        Server = actor["server"]?.ToString()
+                        Id = actor["id"].SafeInt(),
+                        Name = actor["name"].SafeString(),
+                        Type = actor["type"].SafeString(),
+                        SubType = actor["subType"].SafeString(),
+                        Server = actor["server"].SafeString()
                     });
                 }
             }
@@ -264,12 +326,12 @@ public class FFLogsService : IDisposable
                 {
                     report.Fights.Add(new FFLogsFight
                     {
-                        Id = fight["id"]?.Value<int>() ?? 0,
-                        Name = fight["name"]?.ToString() ?? "",
-                        StartTime = fight["startTime"]?.Value<long>() ?? 0,
-                        EndTime = fight["endTime"]?.Value<long>() ?? 0,
-                        Kill = fight["kill"]?.Value<bool>() ?? false,
-                        BossPercentage = fight["bossPercentage"]?.Value<int>()
+                        Id = fight["id"].SafeInt(),
+                        Name = fight["name"].SafeString(),
+                        StartTime = fight["startTime"].SafeLong(),
+                        EndTime = fight["endTime"].SafeLong(),
+                        Kill = fight["kill"].SafeBool(),
+                        BossPercentage = fight["bossPercentage"].SafeNullableInt()
                     });
                 }
             }
@@ -358,16 +420,16 @@ public class FFLogsService : IDisposable
                 {
                     events.Add(new FFLogsCastEvent
                     {
-                        Timestamp = item["timestamp"]?.Value<long>() ?? 0,
-                        Type = item["type"]?.ToString() ?? "",
-                        SourceID = item["sourceID"]?.Value<int>() ?? 0,
-                        TargetID = item["targetID"]?.Value<int>(),
-                        AbilityGameID = item["abilityGameID"]?.Value<uint>() ?? 0
+                        Timestamp = item["timestamp"].SafeLong(),
+                        Type = item["type"].SafeString(),
+                        SourceID = item["sourceID"].SafeInt(),
+                        TargetID = item["targetID"].SafeNullableInt(),
+                        AbilityGameID = item["abilityGameID"].SafeUInt()
                     });
                 }
             }
 
-            var nextTimestamp = eventsData["nextPageTimestamp"]?.Value<long?>();
+            var nextTimestamp = eventsData["nextPageTimestamp"].SafeNullableLong();
             return (events, nextTimestamp, null);
         }
         catch (Exception ex)
