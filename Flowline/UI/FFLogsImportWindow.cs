@@ -407,9 +407,9 @@ public class FFLogsImportWindow : Window, IDisposable
         var fight = currentReport.Fights[selectedFightIndex];
         importOptions.FightId = fight.Id;
 
-        // Filter to only player actors
+        // Filter to only player actors that participated in this specific fight
         playerActors = currentReport.Actors
-            .Where(a => a.IsPlayer)
+            .Where(a => a.IsPlayer && fight.FriendlyPlayers.Contains(a.Id))
             .OrderBy(a => a.SubType)
             .ThenBy(a => a.Name)
             .ToList();

@@ -216,6 +216,10 @@ public class FFLogsService : IDisposable
                             endTime
                             kill
                             bossPercentage
+                            friendlyPlayers
+                            gameZone {
+                                id
+                            }
                         }
                     }
                 }
@@ -262,15 +266,28 @@ public class FFLogsService : IDisposable
             {
                 foreach (var fight in fights)
                 {
-                    report.Fights.Add(new FFLogsFight
+                    var fightData = new FFLogsFight
                     {
                         Id = fight["id"]?.Value<int>() ?? 0,
                         Name = fight["name"]?.ToString() ?? "",
                         StartTime = fight["startTime"]?.Value<long>() ?? 0,
                         EndTime = fight["endTime"]?.Value<long>() ?? 0,
                         Kill = fight["kill"]?.Value<bool>() ?? false,
-                        BossPercentage = fight["bossPercentage"]?.Value<int>()
-                    });
+                        BossPercentage = fight["bossPercentage"]?.Value<int>(),
+                        GameZoneId = fight["gameZone"]?["id"]?.Value<int>() ?? 0
+                    };
+
+                    // Parse friendly players for this fight
+                    var friendlyPlayers = fight["friendlyPlayers"] as JArray;
+                    if (friendlyPlayers != null)
+                    {
+                        foreach (var playerId in friendlyPlayers)
+                        {
+                            fightData.FriendlyPlayers.Add(playerId.Value<int>());
+                        }
+                    }
+
+                    report.Fights.Add(fightData);
                 }
             }
 
