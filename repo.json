@@ -3,7 +3,7 @@
     "Author": "J2Slow",
     "Name": "Flowline",
     "InternalName": "Flowline",
-    "AssemblyVersion": "1.4.2",
+    "AssemblyVersion": "1.4.3",
     "Description": "A rhythm-game style timeline overlay that displays configured actions at specific timestamps during duty encounters. Supports recording, playback, and multiple display modes.",
     "Punchline": "Timeline overlay for encounter planning",
     "ApplicableVersion": "any",
