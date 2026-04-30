@@ -4,8 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Dalamud.Game.Chat;
 using Dalamud.Game.Text;
-using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Flowline.Configuration;
@@ -265,30 +265,24 @@ public class ActionRecorderService : IDisposable
         }
         else
         {
-            var territoryId = clientState.TerritoryType;
+            var territoryId = (ushort)clientState.TerritoryType;
             StartRecording(territoryId);
         }
     }
 
-    private void OnChatMessage(
-        XivChatType type,
-        int timestamp,
-        ref SeString sender,
-        ref SeString message,
-        ref bool isHandled)
+    private void OnChatMessage(IHandleableChatMessage message)
     {
         if (!IsRecording || currentRecording == null)
             return;
 
-        // Don't record while waiting for combat/countdown
         if (waitingForCombatOrCountdown)
             return;
 
-        // Only track action-related chat types
+        var type = message.LogKind;
         if (!IsActionChatType(type))
             return;
 
-        var messageText = message.TextValue;
+        var messageText = message.Message.TextValue;
         var match = ActionUsePattern.Match(messageText);
 
         if (match.Success)

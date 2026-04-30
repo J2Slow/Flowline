@@ -1,9 +1,8 @@
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Text.RegularExpressions;
+using Dalamud.Game.Chat;
 using Dalamud.Game.Text;
-using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using Flowline.Configuration;
 
@@ -114,25 +113,19 @@ public class CountdownService : IDisposable
         this.chatGui.ChatMessage += OnChatMessage;
     }
 
-    private void OnChatMessage(
-        XivChatType type,
-        int timestamp,
-        ref SeString sender,
-        ref SeString message,
-        ref bool isHandled)
+    private void OnChatMessage(IHandleableChatMessage message)
     {
-        // Countdown messages can come through various chat types depending on game language/version
-        // Common types: SystemMessage (57), CountdownMessage (2153/0x869), or others
-        // Accept multiple types to ensure we catch countdown messages
+        var type = message.LogKind;
+
+        // Countdown messages come through SystemMessage and nearby system types
         var validTypes = new[]
         {
-            XivChatType.SystemMessage,      // Standard system messages
-            (XivChatType)2153,              // Countdown specific (0x869)
-            (XivChatType)68,                // Some countdown messages
-            (XivChatType)56,                // System errors/notices
+            XivChatType.SystemMessage,
+            (XivChatType)68,
+            (XivChatType)56,
         };
 
-        var messageText = message.TextValue;
+        var messageText = message.Message.TextValue;
 
         // Debug log all messages to help identify the correct type
         pluginLog?.Debug($"Chat [{(int)type}]: {messageText}");

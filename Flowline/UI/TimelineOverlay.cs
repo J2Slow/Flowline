@@ -369,7 +369,7 @@ public class TimelineOverlay : Window, IDisposable
     {
         if (recorderService == null) return;
 
-        var territoryId = clientState?.TerritoryType ?? 0;
+        var territoryId = (ushort)(clientState?.TerritoryType ?? 0);
         var jobAbbrev = GetJobAbbreviation((byte)(objectTable?.LocalPlayer?.ClassJob.RowId ?? 0));
         var instanceName = dutyDataService?.GetDutyName(territoryId) ?? $"Zone{territoryId}";
 
@@ -380,7 +380,7 @@ public class TimelineOverlay : Window, IDisposable
     {
         if (recorderService == null || selectedTimeline == null) return;
 
-        var territoryId = clientState?.TerritoryType ?? 0;
+        var territoryId = (ushort)(clientState?.TerritoryType ?? 0);
         var jobAbbrev = GetJobAbbreviation((byte)(objectTable?.LocalPlayer?.ClassJob.RowId ?? 0));
         var instanceName = dutyDataService?.GetDutyName(territoryId) ?? $"Zone{territoryId}";
 

@@ -45,9 +45,9 @@ public class DutyDetectionService : IDisposable
         CheckCurrentTerritory();
     }
 
-    private void OnTerritoryChanged(ushort territoryId)
+    private void OnTerritoryChanged(uint territoryId)
     {
-        currentTerritoryId = territoryId;
+        currentTerritoryId = (ushort)territoryId;
         CheckCurrentTerritory();
     }
 

@@ -5,7 +5,7 @@
   "Description": "A rhythm-game style timeline overlay that displays configured actions at specific timestamps during duty encounters. Supports recording, playback, and multiple display modes.",
   "InternalName": "Flowline",
   "ApplicableVersion": "any",
-  "DalamudApiLevel": 14,
+  "DalamudApiLevel": 15,
   "Tags": ["ui", "overlay", "combat"],
   "LoadRequiredState": 2,
   "LoadSync": false,
