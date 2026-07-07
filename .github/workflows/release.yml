@@ -35,7 +35,7 @@ jobs:
       run: |
         $dalamudPath = "$env:RUNNER_TEMP\dalamud"
         New-Item -ItemType Directory -Force -Path $dalamudPath
-        Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/stg/latest.zip -OutFile dalamud.zip
+        Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile dalamud.zip
         Expand-Archive -Path dalamud.zip -DestinationPath $dalamudPath -Force
         echo "DALAMUD_HOME=$dalamudPath" >> $env:GITHUB_ENV
 
@@ -62,10 +62,10 @@ jobs:
     - name: Create release package
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Force -Path release
-        Copy-Item Flowline/bin/Release/Flowline.dll release/
-        Copy-Item Flowline/Flowline.json release/
-        Compress-Archive -Path release/* -DestinationPath Flowline.zip
+        # Use the DalamudPackager output: since Dalamud v15 the manifest inside the
+        # zip is no longer overwritten on install, so it must contain the generated
+        # manifest (with AssemblyVersion), not the raw source Flowline.json
+        Copy-Item Flowline/bin/Release/Flowline/latest.zip Flowline.zip
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
